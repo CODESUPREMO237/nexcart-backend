@@ -1,22 +1,17 @@
 ﻿# Architecture
 
-This project follows clean architecture principles.
+This codebase follows clean architecture to separate business rules from delivery and infrastructure concerns.
 
 ## Layers
-- Domain: business entities and rules.
-- Application: use-cases and services.
-- Infrastructure: framework adapters and persistence.
-- Interface: API handlers and serializers.
+- Domain: business entities and core rules.
+- Application: use cases and orchestration logic.
+- Infrastructure: database, external APIs, framework adapters.
+- Interfaces: controllers, routes, views, serializers, or UI entry points.
 
-## Suggested Structure
-- app/domain
-- app/application
-- app/infrastructure
-- app/interfaces
-- tests/unit
-- tests/integration
+## Test Strategy
+- Unit tests validate isolated business logic.
+- Integration tests validate module boundaries and external interactions.
 
-## Quality Gates
-- Linting via Flake8.
-- Unit and integration tests via Pytest.
-- Containerization with Docker.
+## Tooling
+- Linting enforces code consistency and baseline quality.
+- Docker enables reproducible local and deployment runtime.
