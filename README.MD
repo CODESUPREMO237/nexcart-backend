@@ -229,3 +229,7 @@ For support, email support@nexcart.com or create an issue on GitHub.
 ---
 
 **Built with ❤️ using Django REST Framework**
+
+## Architecture
+See [docs/architecture.md](docs/architecture.md) for clean architecture layers, folder structure, testing strategy, and Docker guidance.
+
