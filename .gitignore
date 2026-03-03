@@ -75,3 +75,16 @@ dump.rdb
 # Security and Scripts
 generate_keys.py
 DEPLOYMENT_GUIDE_FIXED.md
+
+# Development/Diagnostic Scripts (added after accidental commit)
+check_*.py
+debug_*.py
+fix_*.py
+add_*.py
+quick_check.py
+verify_*.py
+*_check.py
+install_dotenv.txt
+remove_scripts.ps1
+remove_scripts.sh
+migrate_images_to_cloudinary.py

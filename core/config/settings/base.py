@@ -1,4 +1,4 @@
-﻿# Location: core\config\settings\base.py
+# Location: core\config\settings\base.py
 """
 NexCart E-Commerce Platform
 Core Settings - Base Configuration
@@ -130,7 +130,6 @@ if all([
     }
     # Also set for backwards compatibility
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    print("✅ Cloudinary storage enabled - Images will be uploaded to Cloudinary")
 else:
     STORAGES = {
         "default": {
@@ -141,8 +140,6 @@ else:
         },
     }
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-    print("⚠️ Cloudinary not configured - Images will be stored locally")
-    print("   Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env")
 
 # Media files - Local storage as fallback
 MEDIA_URL = '/media/'
@@ -279,6 +276,9 @@ MESOMB_APP_KEY = os.getenv('MESOMB_APP_KEY')
 MESOMB_ACCESS_KEY = os.getenv('MESOMB_ACCESS_KEY')
 MESOMB_SECRET_KEY = os.getenv('MESOMB_SECRET_KEY')
 MESOMB_WEBHOOK_SECRET = os.getenv('MESOMB_WEBHOOK_SECRET')
+
+# Frontend URL
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

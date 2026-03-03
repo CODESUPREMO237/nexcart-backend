@@ -55,13 +55,23 @@ class OrderStatusHistorySerializer(serializers.ModelSerializer):
 
 class OrderListSerializer(serializers.ModelSerializer):
     """Order list serializer (minimal fields)"""
-    
+    total_amount = serializers.DecimalField(source='total', max_digits=10, decimal_places=2, read_only=True)
+    items = OrderItemSerializer(many=True, read_only=True)
+    shipping_address = serializers.SerializerMethodField()
+
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'status', 'payment_status',
-            'total', 'created_at'
+            'total', 'total_amount', 'items', 'shipping_address', 'tracking_number', 'created_at'
         ]
+
+    def get_shipping_address(self, obj):
+        return {
+            'city': obj.shipping_city,
+            'state': obj.shipping_state,
+            'country': obj.shipping_country,
+        }
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):

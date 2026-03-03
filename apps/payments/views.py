@@ -64,20 +64,46 @@ def initiate_payment(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def check_payment_status(request, transaction_id):
-    """Check payment status"""
+    """Check payment status and update order/payment records"""
     try:
+        from .models import Payment
         payment_service = MeSombPaymentService()
         result = payment_service.check_payment_status(transaction_id)
-        
+
+        mesomb_status = (result.get('status') or '').upper()
+
+        # Map and persist status change
+        if mesomb_status == 'SUCCESS':
+            internal_status = 'completed'
+        elif mesomb_status in ('FAILED', 'EXPIRED'):
+            internal_status = 'failed'
+        else:
+            internal_status = 'pending'
+
+        # Update Payment + Order records
+        try:
+            payment = Payment.objects.get(transaction_id=transaction_id)
+            if payment.status != internal_status:
+                payment.status = internal_status
+                payment.save(update_fields=['status'])
+
+                order = payment.order
+                if internal_status == 'completed':
+                    order.payment_status = 'completed'
+                    order.status = 'processing'
+                elif internal_status == 'failed':
+                    order.payment_status = 'failed'
+                order.save(update_fields=['payment_status', 'status'])
+                logger.info(f"Order {order.order_number} updated: payment={internal_status}")
+        except Payment.DoesNotExist:
+            pass
+
+        result['status'] = mesomb_status  # return raw MeSomb status for frontend polling
         return Response(result, status=status.HTTP_200_OK)
-        
+
     except PaymentException as e:
         logger.error(f"Status check failed: {str(e)}")
-        return Response({
-            'error': str(e)
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        return Response({
-            'error': 'Status check failed'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': 'Status check failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

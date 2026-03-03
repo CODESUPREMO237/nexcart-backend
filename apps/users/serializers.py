@@ -1,7 +1,8 @@
-﻿# Location: apps\users\serializers.py
+# Location: apps\users\serializers.py
 """
 NexCart User Serializers
 """
+import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -9,8 +10,6 @@ from .models import User, UserProfile, UserActivity, StoreSettings
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """User profile serializer"""
-    
     class Meta:
         model = UserProfile
         fields = [
@@ -21,10 +20,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """User serializer with profile"""
     profile = UserProfileSerializer(read_only=True)
     full_name = serializers.CharField(read_only=True)
-    
+
     class Meta:
         model = User
         fields = [
@@ -36,19 +34,44 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    """User registration serializer"""
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True, required=True)
-    
+
     class Meta:
         model = User
         fields = ['email', 'password', 'password_confirm', 'first_name', 'last_name', 'phone']
-    
+
+    def validate_email(self, value):
+        if not value or '@' not in value:
+            raise serializers.ValidationError("Adresse email invalide.")
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Un compte avec cet email existe déjà.")
+        return value.lower()
+
+    def validate_phone(self, value):
+        if value:
+            cleaned = re.sub(r'\s', '', value)
+            if not re.match(r'^(\+?237)?[6][0-9]{8}$', cleaned):
+                raise serializers.ValidationError(
+                    "Numéro de téléphone camerounais invalide (ex: +237 6XX XXX XXX)."
+                )
+        return value
+
+    def validate_first_name(self, value):
+        if value and len(value.strip()) < 2:
+            raise serializers.ValidationError("Le prénom doit comporter au moins 2 caractères.")
+        return value.strip() if value else value
+
+    def validate_last_name(self, value):
+        if value and len(value.strip()) < 2:
+            raise serializers.ValidationError("Le nom doit comporter au moins 2 caractères.")
+        return value.strip() if value else value
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
+            raise serializers.ValidationError({"password": "Les mots de passe ne correspondent pas."})
         return attrs
-    
+
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(
@@ -62,17 +85,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
-    """User login serializer"""
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    """Change password serializer"""
     old_password = serializers.CharField(required=True, write_only=True)
     new_password = serializers.CharField(required=True, write_only=True, validators=[validate_password])
     new_password_confirm = serializers.CharField(required=True, write_only=True)
-    
+
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({"new_password": "Password fields didn't match."})
@@ -80,12 +101,11 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class UserActivitySerializer(serializers.ModelSerializer):
-    """User activity serializer"""
-    
     class Meta:
         model = UserActivity
         fields = ['id', 'activity_type', 'product', 'metadata', 'created_at']
         read_only_fields = ['id', 'created_at']
+
 
 class StoreSettingsSerializer(serializers.ModelSerializer):
     class Meta:

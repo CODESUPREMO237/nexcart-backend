@@ -180,9 +180,11 @@ class Order(models.Model):
         super().save(*args, **kwargs)
     
     def _generate_order_number(self):
-        """Generate unique order number"""
-        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
-        return f"ORD-{timestamp}-{str(uuid.uuid4())[:8].upper()}"
+        """Generate unique order number — max 20 chars"""
+        # Format: NC-YYMMDD-XXXXXX  e.g. NC-260303-A1B2C3  = 17 chars
+        timestamp = timezone.now().strftime('%y%m%d')
+        unique = str(uuid.uuid4()).replace('-', '')[:6].upper()
+        return f"NC-{timestamp}-{unique}"
 
 
 class OrderItem(models.Model):

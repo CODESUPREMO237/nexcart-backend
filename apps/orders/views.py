@@ -207,10 +207,10 @@ class OrderCreateView(generics.CreateAPIView):
                         'error': f'Insufficient stock for {item.product.name}'
                     }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Calculate totals
+            # Calculate totals (XAF / FCFA)
             subtotal = cart.subtotal
-            shipping_cost = Decimal('10.00')  # Fixed shipping, can be dynamic
-            tax = subtotal * Decimal('0.1')  # 10% tax
+            shipping_cost = Decimal('0') if subtotal >= Decimal('25000') else Decimal('2')  # TODO: change back to 2000 after testing
+            tax = Decimal('0')  # No VAT display for local market
             total = subtotal + shipping_cost + tax
             
             # Create order
