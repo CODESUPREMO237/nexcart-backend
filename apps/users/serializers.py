@@ -43,9 +43,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         if not value or '@' not in value:
-            raise serializers.ValidationError("Adresse email invalide.")
+            raise serializers.ValidationError("Invalid email address.")
         if User.objects.filter(email=value.lower()).exists():
-            raise serializers.ValidationError("Un compte avec cet email existe déjà.")
+            raise serializers.ValidationError("An account with this email already exists.")
         return value.lower()
 
     def validate_phone(self, value):
@@ -53,23 +53,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             cleaned = re.sub(r'\s', '', value)
             if not re.match(r'^(\+?237)?[6][0-9]{8}$', cleaned):
                 raise serializers.ValidationError(
-                    "Numéro de téléphone camerounais invalide (ex: +237 6XX XXX XXX)."
+                    "Invalid Cameroonian phone number (e.g. +237 6XX XXX XXX)."
                 )
         return value
 
     def validate_first_name(self, value):
         if value and len(value.strip()) < 2:
-            raise serializers.ValidationError("Le prénom doit comporter au moins 2 caractères.")
+            raise serializers.ValidationError("First name must be at least 2 characters.")
         return value.strip() if value else value
 
     def validate_last_name(self, value):
         if value and len(value.strip()) < 2:
-            raise serializers.ValidationError("Le nom doit comporter au moins 2 caractères.")
+            raise serializers.ValidationError("Last name must be at least 2 characters.")
         return value.strip() if value else value
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({"password": "Les mots de passe ne correspondent pas."})
+            raise serializers.ValidationError({"password": "Passwords do not match."})
         return attrs
 
     def create(self, validated_data):
@@ -96,7 +96,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError({"new_password": "Password fields didn't match."})
+            raise serializers.ValidationError({"new_password": "Passwords do not match."})
         return attrs
 
 

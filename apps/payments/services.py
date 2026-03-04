@@ -40,13 +40,15 @@ class MeSombPaymentService:
         """Initiate a mobile money collect via MeSomb."""
         try:
             client = self._get_client()
+            from pymesomb.utils import RandomGenerator
             response = client.make_collect(
                 amount=int(order.total),
                 service=service,
                 payer=phone_number,
                 currency=currency,
                 country='CM',
-                trx_id=order.order_number,
+                trx_id=str(order.order_number),
+                nonce=RandomGenerator.nonce(),
             )
 
             logger.info(

@@ -15,8 +15,8 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '192.168.228.100', '*']
 # CORS - Allow all origins in development
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Email backend - Console in development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email backend - Use real SMTP so password reset emails are actually delivered
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # Disable HTTPS redirect in development
 SECURE_SSL_REDIRECT = False

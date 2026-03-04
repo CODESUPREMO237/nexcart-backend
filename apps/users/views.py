@@ -12,6 +12,10 @@ from django.contrib.auth import authenticate
 from django.conf import settings
 import requests
 import logging
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+from django.core.cache import cache
+from django.conf import settings as django_settings
 
 from .models import User, UserProfile, StoreSettings
 from .permissions import IsAdmin
@@ -396,3 +400,79 @@ class StoreSettingsView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return StoreSettings.load()
+
+
+class ForgotPasswordView(APIView):
+    """Send a password reset OTP to user's email"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Always return success to prevent user enumeration
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'message': 'If this email is registered, you will receive a reset code shortly.'})
+
+        try:
+            # Generate a 6-digit OTP, store in cache for 15 minutes
+            otp = get_random_string(length=6, allowed_chars='0123456789')
+            cache_key = f'password_reset_otp_{email}'
+            cache.set(cache_key, otp, timeout=900)  # 15 minutes
+
+            frontend_url = getattr(django_settings, 'FRONTEND_URL', 'http://localhost:3000')
+            reset_link = f"{frontend_url}/reset-password?email={email}&otp={otp}"
+
+            send_mail(
+                subject='Reset your NexCart password',
+                message=(
+                    f"Hi {user.first_name or 'there'},\n\n"
+                    f"Your password reset code is: {otp}\n\n"
+                    f"Or click the link below to reset your password:\n{reset_link}\n\n"
+                    f"This code expires in 15 minutes. If you did not request this, ignore this email."
+                ),
+                from_email=django_settings.EMAIL_HOST_USER,  # Gmail requires sending FROM the authenticated address
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            logger.info(f"Password reset OTP sent to {email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {email}: {e}")
+            return Response({'error': f'Failed to send email: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'message': 'If this email is registered, you will receive a reset code shortly.'})
+
+
+class ResetPasswordView(APIView):
+    """Verify OTP and set a new password"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email       = request.data.get('email', '').strip().lower()
+        otp         = request.data.get('otp', '').strip()
+        new_password = request.data.get('new_password', '')
+
+        if not all([email, otp, new_password]):
+            return Response({'error': 'email, otp and new_password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_password) < 8:
+            return Response({'error': 'Password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f'password_reset_otp_{email}'
+        stored_otp = cache.get(cache_key)
+
+        if not stored_otp or stored_otp != otp:
+            return Response({'error': 'Invalid or expired reset code'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+            cache.delete(cache_key)  # Invalidate OTP after use
+            logger.info(f"Password reset successful for {email}")
+            return Response({'message': 'Password reset successfully. You can now log in.'})
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid or expired reset code'}, status=status.HTTP_400_BAD_REQUEST)

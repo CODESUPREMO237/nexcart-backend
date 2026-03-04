@@ -14,7 +14,9 @@ from .views import (
     ChangePasswordView,
     UserListView,
     AdminUserDetailView,
-    StoreSettingsView
+    StoreSettingsView,
+    ForgotPasswordView,
+    ResetPasswordView,
 )
 
 app_name = 'users'
@@ -31,6 +33,10 @@ urlpatterns = [
     # Profile
     path('auth/profile/', UserProfileView.as_view(), name='profile'),
     path('auth/change-password/', ChangePasswordView.as_view(), name='change-password'),
+
+    # Password Reset
+    path('auth/forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('auth/reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     # Administrative
     path('admin/users/', UserListView.as_view(), name='admin-user-list'),
     path('admin/users/<uuid:id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),

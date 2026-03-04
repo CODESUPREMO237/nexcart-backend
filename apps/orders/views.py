@@ -209,7 +209,7 @@ class OrderCreateView(generics.CreateAPIView):
             
             # Calculate totals (XAF / FCFA)
             subtotal = cart.subtotal
-            shipping_cost = Decimal('0') if subtotal >= Decimal('25000') else Decimal('2000')
+            shipping_cost = Decimal('0') if subtotal >= Decimal('25000') else Decimal('5')
             tax = Decimal('0')  # No VAT display for local market
             total = subtotal + shipping_cost + tax
             

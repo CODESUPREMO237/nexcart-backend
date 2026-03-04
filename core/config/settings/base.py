@@ -80,13 +80,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.config.wsgi.application'
 
 # Database Configuration - Neon PostgreSQL
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+_db_config = dj_database_url.config(
+    default=os.getenv('DATABASE_URL'),
+    conn_max_age=600,
+    conn_health_checks=True,
+)
+# Add connect_timeout so Neon cold-starts don't crash the server
+_db_config.setdefault('OPTIONS', {})
+_db_config['OPTIONS']['connect_timeout'] = 10
+DATABASES = {'default': _db_config}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
