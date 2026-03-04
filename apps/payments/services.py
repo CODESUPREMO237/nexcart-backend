@@ -41,15 +41,15 @@ class MeSombPaymentService:
         try:
             client = self._get_client()
             from pymesomb.utils import RandomGenerator
-            response = client.make_collect(
-                int(order.total),   # positional: some SDK versions don't accept 'amount' as kwarg
-                service,
-                phone_number,
-                nonce=RandomGenerator.nonce(),
-                country='CM',
-                currency=currency,
-                trx_id=str(order.order_number),
-            )
+            response = client.make_collect({
+                'amount': int(order.total),
+                'service': service,
+                'payer': phone_number,
+                'currency': currency,
+                'country': 'CM',
+                'trxID': str(order.order_number),
+                'nonce': RandomGenerator.nonce(),
+            })
 
             logger.info(
                 f"MeSomb collect for order {order.order_number}: "
