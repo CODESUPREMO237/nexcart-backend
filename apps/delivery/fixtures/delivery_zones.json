@@ -1,0 +1,60 @@
+[
+  {
+    "model": "delivery.deliveryzone",
+    "pk": "a0000001-0000-0000-0000-000000000001",
+    "fields": {
+      "name": "Tiko Local", "region": "South West", "description": "Tiko town and surrounding quarters",
+      "base_fee": "500.00", "free_delivery_threshold": "25000.00",
+      "estimated_days_min": 1, "estimated_days_max": 2, "is_active": true, "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "delivery.deliveryzone",
+    "pk": "a0000002-0000-0000-0000-000000000002",
+    "fields": {
+      "name": "Buea Zone", "region": "South West", "description": "Buea town, Molyko, Soppo and surroundings",
+      "base_fee": "1000.00", "free_delivery_threshold": "30000.00",
+      "estimated_days_min": 1, "estimated_days_max": 3, "is_active": true, "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "delivery.deliveryzone",
+    "pk": "a0000003-0000-0000-0000-000000000003",
+    "fields": {
+      "name": "Limbe Zone", "region": "South West", "description": "Limbe, Mile 4, Down Beach",
+      "base_fee": "1500.00", "free_delivery_threshold": "30000.00",
+      "estimated_days_min": 1, "estimated_days_max": 3, "is_active": true, "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "delivery.deliveryzone",
+    "pk": "a0000004-0000-0000-0000-000000000004",
+    "fields": {
+      "name": "Douala Zone", "region": "Littoral", "description": "Douala metropolitan area",
+      "base_fee": "2500.00", "free_delivery_threshold": "50000.00",
+      "estimated_days_min": 2, "estimated_days_max": 5, "is_active": true, "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "delivery.deliveryzone",
+    "pk": "a0000005-0000-0000-0000-000000000005",
+    "fields": {
+      "name": "Yaoundé Zone", "region": "Centre", "description": "Yaoundé metropolitan area",
+      "base_fee": "3000.00", "free_delivery_threshold": "50000.00",
+      "estimated_days_min": 3, "estimated_days_max": 7, "is_active": true, "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {"model": "delivery.deliveryarea", "pk": "b0000001-0000-0000-0000-000000000001", "fields": {"zone": "a0000001-0000-0000-0000-000000000001", "name": "Tiko Town", "city": "Tiko", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000002-0000-0000-0000-000000000002", "fields": {"zone": "a0000001-0000-0000-0000-000000000001", "name": "Mutengene", "city": "Tiko", "surcharge": "200.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000003-0000-0000-0000-000000000003", "fields": {"zone": "a0000001-0000-0000-0000-000000000001", "name": "Likomba", "city": "Tiko", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000004-0000-0000-0000-000000000004", "fields": {"zone": "a0000002-0000-0000-0000-000000000002", "name": "Buea Town", "city": "Buea", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000005-0000-0000-0000-000000000005", "fields": {"zone": "a0000002-0000-0000-0000-000000000002", "name": "Molyko", "city": "Buea", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000006-0000-0000-0000-000000000006", "fields": {"zone": "a0000002-0000-0000-0000-000000000002", "name": "Soppo", "city": "Buea", "surcharge": "200.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000007-0000-0000-0000-000000000007", "fields": {"zone": "a0000003-0000-0000-0000-000000000003", "name": "Limbe Town", "city": "Limbe", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000008-0000-0000-0000-000000000008", "fields": {"zone": "a0000003-0000-0000-0000-000000000003", "name": "Mile 4", "city": "Limbe", "surcharge": "200.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000009-0000-0000-0000-000000000009", "fields": {"zone": "a0000004-0000-0000-0000-000000000004", "name": "Akwa", "city": "Douala", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000010-0000-0000-0000-000000000010", "fields": {"zone": "a0000004-0000-0000-0000-000000000004", "name": "Bonaberi", "city": "Douala", "surcharge": "500.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000011-0000-0000-0000-000000000011", "fields": {"zone": "a0000004-0000-0000-0000-000000000004", "name": "Deido", "city": "Douala", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000012-0000-0000-0000-000000000012", "fields": {"zone": "a0000005-0000-0000-0000-000000000005", "name": "Centre Ville", "city": "Yaoundé", "surcharge": "0.00", "is_active": true}},
+  {"model": "delivery.deliveryarea", "pk": "b0000013-0000-0000-0000-000000000013", "fields": {"zone": "a0000005-0000-0000-0000-000000000005", "name": "Bastos", "city": "Yaoundé", "surcharge": "0.00", "is_active": true}}
+]

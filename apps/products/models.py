@@ -1,4 +1,4 @@
-﻿# Location: apps\products\models.py
+# Location: apps\products\models.py
 """
 NexCart Product Models
 Product catalog with categories, reviews, and inventory
@@ -25,7 +25,7 @@ class Category(models.Model):
         blank=True
     )
     
-    image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    image = models.ImageField(upload_to='categories/', blank=True, null=True, max_length=500)
     is_active = models.BooleanField(default=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -65,6 +65,15 @@ class Product(models.Model):
         null=True
     )
     tags = models.CharField(max_length=500, blank=True, help_text="Comma-separated tags")
+
+    # Vendor (multi-vendor marketplace)
+    vendor = models.ForeignKey(
+        'vendors.Vendor',
+        on_delete=models.SET_NULL,
+        related_name='products',
+        null=True,
+        blank=True
+    )
     
     # Pricing
     price = models.DecimalField(
@@ -94,7 +103,7 @@ class Product(models.Model):
     allow_backorder = models.BooleanField(default=False)
     
     # Media
-    featured_image = models.ImageField(upload_to='products/', blank=True, null=True)
+    featured_image = models.ImageField(upload_to='products/', blank=True, null=True, max_length=500)
     
     # SEO
     meta_title = models.CharField(max_length=200, blank=True)
@@ -103,6 +112,29 @@ class Product(models.Model):
     # Status
     is_active = models.BooleanField(default=True, db_index=True)
     is_featured = models.BooleanField(default=False)
+
+    # Admin approval workflow
+    APPROVAL_STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    approval_status = models.CharField(
+        max_length=10,
+        choices=APPROVAL_STATUS_CHOICES,
+        default='approved',
+        db_index=True,
+        help_text='Admin must approve new/updated products before they go live'
+    )
+    pending_deletion = models.BooleanField(
+        default=False,
+        help_text='Seller requested deletion, awaiting admin confirmation'
+    )
+    pending_update_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text='Stores proposed field changes until admin approves the update'
+    )
     
     # Statistics (denormalized for performance)
     view_count = models.IntegerField(default=0)
@@ -161,7 +193,7 @@ class ProductImage(models.Model):
         on_delete=models.CASCADE,
         related_name='images'
     )
-    image = models.ImageField(upload_to='products/')
+    image = models.ImageField(upload_to='products/', max_length=500)
     alt_text = models.CharField(max_length=200, blank=True)
     position = models.IntegerField(default=0)
     

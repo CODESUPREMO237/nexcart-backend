@@ -40,6 +40,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     ROLE_CHOICES = [
         ('user', 'User'),
+        ('seller', 'Seller'),
         ('admin', 'Admin'),
     ]
     
@@ -109,6 +110,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def is_admin(self):
         return self.role == 'admin'
+
+    def is_seller(self):
+        return self.role == 'seller'
 
 
 class UserProfile(models.Model):
@@ -221,3 +225,53 @@ class StoreSettings(models.Model):
 
     def __str__(self):
         return "Global Store Settings"
+
+
+class SellerKYC(models.Model):
+    """KYC identity verification for sellers"""
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='kyc'
+    )
+
+    # Identity documents
+    id_front = models.ImageField(upload_to='kyc/id_front/', max_length=500)
+    id_back = models.ImageField(upload_to='kyc/id_back/', max_length=500)
+    selfie_with_id = models.ImageField(upload_to='kyc/selfies/', max_length=500)
+
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending',
+        db_index=True
+    )
+    rejection_reason = models.TextField(blank=True)
+
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='kyc_reviews'
+    )
+
+    class Meta:
+        db_table = 'seller_kyc'
+        verbose_name = 'Seller KYC'
+        verbose_name_plural = 'Seller KYCs'
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"KYC – {self.user.email} [{self.status}]"

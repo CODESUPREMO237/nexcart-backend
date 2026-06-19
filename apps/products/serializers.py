@@ -1,4 +1,4 @@
-﻿# Location: apps\products\serializers.py
+# Location: apps\products\serializers.py
 """
 NexCart Product Serializers
 """
@@ -20,6 +20,8 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         """Return full URL for category image"""
         if obj.image and obj.image.name:
+            if str(obj.image.name).startswith('http'):
+                return obj.image.name
             try:
                 request = self.context.get('request')
                 if request:
@@ -50,6 +52,8 @@ class ProductImageSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         """Return full URL for image"""
         if obj.image and obj.image.name:
+            if str(obj.image.name).startswith('http'):
+                return obj.image.name
             try:
                 request = self.context.get('request')
                 if request:
@@ -79,26 +83,30 @@ class ProductListSerializer(serializers.ModelSerializer):
     """Product list serializer (minimal fields)"""
     category_name = serializers.CharField(source='category.name', read_only=True)
     featured_image = serializers.SerializerMethodField()
+    vendor_name = serializers.CharField(source='vendor.store_name', read_only=True, default=None)
+    vendor_id = serializers.UUIDField(source='vendor.id', read_only=True, default=None)
+    vendor_slug = serializers.CharField(source='vendor.slug', read_only=True, default=None)
     
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'slug', 'short_description', 'category', 'category_name',
             'price', 'compare_price', 'discount_percentage', 'featured_image',
-            'is_in_stock', 'average_rating', 'review_count', 'is_featured'
+            'is_in_stock', 'average_rating', 'review_count', 'is_featured',
+            'vendor_name', 'vendor_id', 'vendor_slug'
         ]
     
     def get_featured_image(self, obj):
         """Return full URL for featured image"""
-        # Check if field has any value (string path or file object)
         if obj.featured_image and obj.featured_image.name:
+            if str(obj.featured_image.name).startswith('http'):
+                return obj.featured_image.name
             try:
                 request = self.context.get('request')
                 if request:
                     return request.build_absolute_uri(obj.featured_image.url)
                 return obj.featured_image.url
             except Exception as e:
-                # If URL generation fails, return None
                 print(f"Error getting image URL for {obj.name}: {e}")
                 return None
         return None
@@ -111,6 +119,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     reviews = serializers.SerializerMethodField()
     tags_list = serializers.SerializerMethodField()
     featured_image = serializers.SerializerMethodField()
+    vendor = serializers.SerializerMethodField()
     
     class Meta:
         model = Product
@@ -121,20 +130,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'allow_backorder', 'featured_image', 'images', 'meta_title',
             'meta_description', 'is_active', 'is_featured', 'is_in_stock',
             'view_count', 'purchase_count', 'average_rating', 'review_count',
-            'reviews', 'created_at', 'updated_at'
+            'reviews', 'vendor', 'created_at', 'updated_at'
         ]
     
     def get_featured_image(self, obj):
         """Return full URL for featured image"""
-        # Check if field has any value (string path or file object)
         if obj.featured_image and obj.featured_image.name:
+            if str(obj.featured_image.name).startswith('http'):
+                return obj.featured_image.name
             try:
                 request = self.context.get('request')
                 if request:
                     return request.build_absolute_uri(obj.featured_image.url)
                 return obj.featured_image.url
             except Exception as e:
-                # If URL generation fails, return None
                 print(f"Error getting image URL for {obj.name}: {e}")
                 return None
         return None
@@ -143,6 +152,17 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         if obj.tags:
             return [tag.strip() for tag in obj.tags.split(',')]
         return []
+        
+    def get_vendor(self, obj):
+        if obj.vendor:
+            return {
+                'id': str(obj.vendor.id),
+                'user_id': str(obj.vendor.user_id),
+                'store_name': obj.vendor.store_name,
+                'slug': obj.vendor.slug,
+                'city': obj.vendor.city
+            }
+        return None
     
     def get_reviews(self, obj):
         reviews = obj.reviews.filter(is_approved=True).order_by('-created_at')[:5]

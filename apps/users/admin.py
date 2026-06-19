@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
-from .models import User, UserProfile, UserActivity, StoreSettings
+from .models import User, UserProfile, UserActivity, StoreSettings, SellerKYC
 
 
 @admin.register(User)
@@ -127,4 +127,32 @@ class StoreSettingsAdmin(admin.ModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         # Don't allow deletion
+        return False
+
+
+@admin.register(SellerKYC)
+class SellerKYCAdmin(admin.ModelAdmin):
+    list_display = ['user_email', 'status', 'submitted_at', 'reviewed_at', 'reviewed_by']
+    list_filter = ['status', 'submitted_at']
+    search_fields = ['user__email', 'user__first_name', 'user__last_name']
+    readonly_fields = [
+        'user', 'id_front', 'id_back', 'selfie_with_id',
+        'submitted_at', 'updated_at', 'reviewed_at', 'reviewed_by',
+    ]
+    ordering = ['-submitted_at']
+
+    fieldsets = (
+        ('Seller', {'fields': ('user',)}),
+        ('Documents', {'fields': ('id_front', 'id_back', 'selfie_with_id')}),
+        ('Decision', {'fields': ('status', 'rejection_reason', 'reviewed_by', 'reviewed_at')}),
+        ('Timestamps', {'fields': ('submitted_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+    def user_email(self, obj):
+        return obj.user.email
+    user_email.short_description = 'Seller Email'
+    user_email.admin_order_field = 'user__email'
+
+    def has_add_permission(self, request):
+        # KYC records are created by sellers, not manually
         return False

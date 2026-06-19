@@ -1,4 +1,4 @@
-﻿# Location: apps\products\views.py
+# Location: apps\products\views.py
 """
 NexCart Product Views
 """
@@ -100,7 +100,16 @@ class ProductReviewListCreateView(generics.ListCreateAPIView):
         return [AllowAny()]
     
     def perform_create(self, serializer):
-        product_id = self.request.data.get('product_id')
+        # Support both URL kwarg (nested route) and request body field
+        product_id = self.kwargs.get('product_id') or self.request.data.get('product') or self.request.data.get('product_id')
+        
+        if not product_id:
+            raise serializers.ValidationError({'product': 'This field is required.'})
+        
+        # Validate rating
+        rating = self.request.data.get('rating')
+        if not rating or int(rating) < 1:
+            raise serializers.ValidationError({'rating': 'Please select a rating.'})
         
         # Check if user has already reviewed this product
         if ProductReview.objects.filter(

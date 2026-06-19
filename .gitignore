@@ -88,3 +88,8 @@ install_dotenv.txt
 remove_scripts.ps1
 remove_scripts.sh
 migrate_images_to_cloudinary.py
+
+# One-off data/maintenance scripts (run via `manage.py shell`, not meant for VCS)
+seed_data.py
+reset_db.py
+update_prices.py

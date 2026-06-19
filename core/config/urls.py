@@ -21,6 +21,13 @@ urlpatterns = [
     path('api/', include('apps.payments.urls')),
    # The free tier (512MB RAM) is insufficient for sklearn/scipy. You need:
    # path('api/', include('apps.recommendations.urls')),
+
+    # New feature apps
+    path('api/', include('apps.vendors.urls')),
+    path('api/', include('apps.chat.urls')),
+    path('api/', include('apps.delivery.urls')),
+    path('api/', include('apps.coupons.urls')),
+    path('api/', include('apps.analytics.urls')),
 ]
 
 # Serve static files in development

@@ -17,6 +17,9 @@ from .views import (
     StoreSettingsView,
     ForgotPasswordView,
     ResetPasswordView,
+    SellerKYCSubmitView,
+    AdminKYCListView,
+    AdminKYCReviewView,
 )
 
 app_name = 'users'
@@ -37,6 +40,14 @@ urlpatterns = [
     # Password Reset
     path('auth/forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('auth/reset-password/', ResetPasswordView.as_view(), name='reset-password'),
+
+    # KYC – Seller
+    path('seller/kyc/', SellerKYCSubmitView.as_view(), name='seller-kyc'),
+
+    # KYC – Admin
+    path('admin/kyc/', AdminKYCListView.as_view(), name='admin-kyc-list'),
+    path('admin/kyc/<uuid:kyc_id>/review/', AdminKYCReviewView.as_view(), name='admin-kyc-review'),
+
     # Administrative
     path('admin/users/', UserListView.as_view(), name='admin-user-list'),
     path('admin/users/<uuid:id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),

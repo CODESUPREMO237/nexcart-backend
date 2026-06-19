@@ -7,6 +7,7 @@ from rest_framework import status, generics,permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.conf import settings
@@ -16,8 +17,9 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.core.cache import cache
 from django.conf import settings as django_settings
+from django.utils import timezone
 
-from .models import User, UserProfile, StoreSettings
+from .models import User, UserProfile, StoreSettings, SellerKYC
 from .permissions import IsAdmin
 from .serializers import (
     UserRegistrationSerializer,
@@ -25,7 +27,9 @@ from .serializers import (
     UserSerializer,
     UserProfileSerializer,
     ChangePasswordSerializer,
-    StoreSettingsSerializer
+    StoreSettingsSerializer,
+    SellerKYCSerializer,
+    SellerKYCAdminSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -333,6 +337,49 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def retrieve(self, request, *args, **kwargs):
+        """Override to prevent browser from caching stale role/profile data."""
+        response = super().retrieve(request, *args, **kwargs)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        return response
+
+    def perform_update(self, serializer):
+        """Explicitly handle nested profile updates to ensure they persist."""
+        user = serializer.save()
+        
+        # Double-check: if profile data was in the request but didn't get saved
+        # by the serializer (DRF nested writable serializer edge case), save it
+        # directly here.
+        profile_data = self.request.data.get('profile')
+        if profile_data and isinstance(profile_data, dict):
+            from .models import UserProfile
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            changed = False
+            for field, value in profile_data.items():
+                if hasattr(profile, field):
+                    setattr(profile, field, value)
+                    changed = True
+            if changed:
+                profile.save()
+                logger.info(f"Profile updated for user {user.email}: {profile_data}")
+
+    def update(self, request, *args, **kwargs):
+        """Override to refresh the instance from DB before serializing the response."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Refresh instance from database so response includes the latest profile data
+        instance.refresh_from_db()
+        # Also refresh the related profile object
+        if hasattr(instance, 'profile'):
+            instance.profile.refresh_from_db()
+
+        return Response(self.get_serializer(instance).data)
+
 
 class ChangePasswordView(APIView):
     """Change user password"""
@@ -357,18 +404,14 @@ class ChangePasswordView(APIView):
             return Response({'message': 'Password updated successfully'})
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
 
-
-# Add this class at the bottom of views.py
 class UserListView(generics.ListAPIView):
     """Admin-only view to list all users"""
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
 
-# Add to apps/users/views.py
 
 class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Admin-only view to update or delete any user"""
@@ -378,14 +421,12 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'id'
 
     def perform_destroy(self, instance):
-        # Prevent admin from deleting themselves
         if instance == self.request.user:
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"error": "You cannot delete your own account"})
         instance.delete()
     
     def perform_update(self, serializer):
-        # When role is changed to admin, set is_staff=True
         if 'role' in self.request.data:
             if self.request.data['role'] == 'admin':
                 serializer.save(is_staff=True, is_superuser=True)
@@ -393,6 +434,7 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
                 serializer.save(is_staff=False, is_superuser=False)
         else:
             serializer.save()
+
 
 class StoreSettingsView(generics.RetrieveUpdateAPIView):
     serializer_class = StoreSettingsSerializer
@@ -411,17 +453,15 @@ class ForgotPasswordView(APIView):
         if not email:
             return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Always return success to prevent user enumeration
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'message': 'If this email is registered, you will receive a reset code shortly.'})
 
         try:
-            # Generate a 6-digit OTP, store in cache for 15 minutes
             otp = get_random_string(length=6, allowed_chars='0123456789')
             cache_key = f'password_reset_otp_{email}'
-            cache.set(cache_key, otp, timeout=900)  # 15 minutes
+            cache.set(cache_key, otp, timeout=900)
 
             frontend_url = getattr(django_settings, 'FRONTEND_URL', 'http://localhost:3000')
             reset_link = f"{frontend_url}/reset-password?email={email}&otp={otp}"
@@ -434,7 +474,7 @@ class ForgotPasswordView(APIView):
                     f"Or click the link below to reset your password:\n{reset_link}\n\n"
                     f"This code expires in 15 minutes. If you did not request this, ignore this email."
                 ),
-                from_email=django_settings.EMAIL_HOST_USER,  # Gmail requires sending FROM the authenticated address
+                from_email=django_settings.EMAIL_HOST_USER,
                 recipient_list=[email],
                 fail_silently=False,
             )
@@ -471,8 +511,130 @@ class ResetPasswordView(APIView):
             user = User.objects.get(email=email)
             user.set_password(new_password)
             user.save(update_fields=['password'])
-            cache.delete(cache_key)  # Invalidate OTP after use
+            cache.delete(cache_key)
             logger.info(f"Password reset successful for {email}")
             return Response({'message': 'Password reset successfully. You can now log in.'})
         except User.DoesNotExist:
             return Response({'error': 'Invalid or expired reset code'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ── KYC Views ────────────────────────────────────────────────────────────────
+
+class SellerKYCSubmitView(APIView):
+    """Seller submits KYC documents (id_front, id_back, selfie_with_id)"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request):
+        """Return current KYC status for this seller"""
+        if request.user.role != 'seller':
+            return Response({'kyc': None, 'status': 'not_seller'})
+        try:
+            kyc = SellerKYC.objects.get(user=request.user)
+            return Response(SellerKYCSerializer(kyc, context={'request': request}).data)
+        except SellerKYC.DoesNotExist:
+            return Response({'status': 'not_submitted'})
+
+    def post(self, request):
+        """Submit or resubmit KYC documents"""
+        if request.user.role != 'seller':
+            return Response(
+                {'error': 'Only sellers can submit KYC.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        id_front = request.FILES.get('id_front')
+        id_back  = request.FILES.get('id_back')
+        selfie   = request.FILES.get('selfie_with_id')
+
+        if not all([id_front, id_back, selfie]):
+            return Response(
+                {'error': 'id_front, id_back, and selfie_with_id are all required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update existing or create new
+        try:
+            kyc = SellerKYC.objects.get(user=request.user)
+            # Only allow resubmission if previously rejected
+            if kyc.status == 'pending':
+                return Response(
+                    {'error': 'Your KYC is already under review. Please wait for the admin to process it.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if kyc.status == 'approved':
+                return Response(
+                    {'error': 'Your KYC has already been approved.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Rejected – allow resubmission
+            kyc.id_front = id_front
+            kyc.id_back  = id_back
+            kyc.selfie_with_id = selfie
+            kyc.status = 'pending'
+            kyc.rejection_reason = ''
+            kyc.reviewed_at = None
+            kyc.reviewed_by = None
+            kyc.save()
+        except SellerKYC.DoesNotExist:
+            kyc = SellerKYC.objects.create(
+                user=request.user,
+                id_front=id_front,
+                id_back=id_back,
+                selfie_with_id=selfie,
+            )
+
+        return Response(
+            SellerKYCSerializer(kyc, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+class AdminKYCListView(generics.ListAPIView):
+    """Admin: list all KYC submissions, filterable by status"""
+    serializer_class = SellerKYCAdminSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        qs = SellerKYC.objects.select_related('user', 'reviewed_by').all()
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+
+class AdminKYCReviewView(APIView):
+    """Admin: approve or reject a KYC submission"""
+    permission_classes = [IsAdmin]
+
+    def post(self, request, kyc_id):
+        try:
+            kyc = SellerKYC.objects.select_related('user').get(id=kyc_id)
+        except SellerKYC.DoesNotExist:
+            return Response({'error': 'KYC not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        action = request.data.get('action')  # 'approve' or 'reject'
+        reason = request.data.get('reason', '').strip()
+
+        if action not in ('approve', 'reject'):
+            return Response({'error': "action must be 'approve' or 'reject'"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if action == 'reject' and not reason:
+            return Response({'error': 'A rejection reason is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        kyc.status = 'approved' if action == 'approve' else 'rejected'
+        kyc.rejection_reason = '' if action == 'approve' else reason
+        kyc.reviewed_at = timezone.now()
+        kyc.reviewed_by = request.user
+        kyc.save()
+
+        # If approved, mark the vendor as verified too
+        if action == 'approve':
+            try:
+                vendor = kyc.user.vendor_profile
+                vendor.is_verified = True
+                vendor.save(update_fields=['is_verified'])
+            except Exception:
+                pass  # no vendor profile yet – that's fine
+
+        return Response(SellerKYCAdminSerializer(kyc, context={'request': request}).data)

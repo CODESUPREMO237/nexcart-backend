@@ -1,9 +1,9 @@
-﻿# Location: apps\products\services.py
+# Location: apps\products\services.py
 """
 NexCart Product Services
 Business logic for product management
 """
-from django.db.models import Avg, F
+from django.db.models import Avg, F, Count
 from django.core.cache import cache
 from .models import Product, ProductReview
 import logging
@@ -16,29 +16,43 @@ class ProductService:
     
     @staticmethod
     def update_product_rating(product_id):
-        """Update product average rating and review count"""
+        """Update product average rating and review count, then sync vendor rating."""
         try:
-            product = Product.objects.get(id=product_id)
+            product = Product.objects.select_related('vendor').get(id=product_id)
             reviews = ProductReview.objects.filter(
                 product=product,
                 is_approved=True
             )
-            
+
             aggregate = reviews.aggregate(
                 avg_rating=Avg('rating'),
-                count=F('id')
+                count=Count('id')
             )
-            
+
             product.average_rating = aggregate['avg_rating'] or 0
-            product.review_count = reviews.count()
+            product.review_count = aggregate['count'] or 0
             product.save(update_fields=['average_rating', 'review_count'])
-            
+
+            # --- Also update the vendor's aggregate rating across ALL their products ---
+            if product.vendor:
+                vendor_aggregate = ProductReview.objects.filter(
+                    product__vendor=product.vendor,
+                    is_approved=True
+                ).aggregate(avg_rating=Avg('rating'))
+
+                product.vendor.average_rating = vendor_aggregate['avg_rating'] or 0
+                product.vendor.save(update_fields=['average_rating'])
+                logger.info(
+                    f"Updated vendor {product.vendor.store_name} "
+                    f"average_rating to {product.vendor.average_rating}"
+                )
+
             # Clear cache
             cache_key = f'product_detail_{product_id}'
             cache.delete(cache_key)
-            
+
             logger.info(f"Updated rating for product {product_id}")
-            
+
         except Product.DoesNotExist:
             logger.error(f"Product {product_id} not found")
     

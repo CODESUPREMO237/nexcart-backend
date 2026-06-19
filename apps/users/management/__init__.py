@@ -1,1 +1,1 @@
-# Make this a Python package
+# management package
