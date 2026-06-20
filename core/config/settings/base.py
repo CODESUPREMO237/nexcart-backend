@@ -15,6 +15,14 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-production')
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
+# Tell Django to trust Render's proxy header for HTTPS detection.
+# Render terminates SSL at its load balancer and forwards requests to
+# Gunicorn over plain HTTP, setting X-Forwarded-Proto: https. Without this,
+# Django thinks every request is insecure and (with SECURE_SSL_REDIRECT=True
+# in prod) will try to redirect every request — including health checks —
+# which monitoring services often report as a failure.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Parse ALLOWED_HOSTS from environment or use defaults
 ALLOWED_HOSTS_STR = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',')]

@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "HEAD"])
 def api_health(request):
     """API health check endpoint"""
     return JsonResponse({
